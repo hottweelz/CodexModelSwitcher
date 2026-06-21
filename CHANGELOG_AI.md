@@ -38,6 +38,55 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:14 EDT - Verify Debug app launch
+
+Task summary: Verified the locally signed Debug app can launch as a menu bar process after the maintainer ran the build/run path.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Checked whether `CodexModelSwitcher` was already running.
+- Verified the Debug app bundle exists in Xcode DerivedData and is configured as an `LSUIElement` menu bar app.
+- Launched the Debug app bundle directly with `open -n`.
+- Confirmed the `CodexModelSwitcher` process stayed alive.
+- Confirmed the app data file exists without printing its contents.
+- No app source behavior changed.
+
+Files touched:
+
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `pgrep -x CodexModelSwitcher || true`
+- `ps -axo pid,comm | rg 'CodexModelSwitcher$' || true`
+- `plutil -p /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app/Contents/Info.plist | rg 'CFBundleIdentifier|LSUIElement|CFBundleName|CFBundleExecutable'`
+- `/usr/bin/open -n /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app`
+- `pgrep -x CodexModelSwitcher || true`
+- `ps -p 46015 -o pid,comm,args`
+- `test -f "$HOME/Library/Application Support/CodexModelSwitcher/app-data.json" && ls -l "$HOME/Library/Application Support/CodexModelSwitcher/app-data.json" || true`
+
+Results: The Debug app launched and remained running as PID `46015`. The app bundle is menu-bar-only with `LSUIElement = true`, so it will not show a Dock icon. The app data file exists at `~/Library/Application Support/CodexModelSwitcher/app-data.json`.
+
+Decisions made:
+
+- Leave the launched Debug app running so the maintainer can inspect the menu bar UI.
+
+Known issues:
+
+- Visual menu bar UI/profile-list inspection has not been performed by the agent.
+- Debug app data contents were intentionally not printed because app/provider state may become sensitive.
+
+Next recommended steps:
+
+- Inspect the menu bar icon and confirm the profile list shows the expected Codex homes.
+- Copy one profile launch command from the UI and verify it starts Codex with the selected `CODEX_HOME`.
+
+Notes for the next agent: The app is a menu bar accessory process, not a Dock app; use exact `pgrep -x CodexModelSwitcher` instead of broad `pgrep -fl` because editor tooling may include the repo path in its command line.
+
+MEMORY.md update: not needed
+
 ## 2026-06-21 19:11 EDT - Enable free local Debug signing
 
 Task summary: Switched Debug signing to Xcode's local `Sign to Run Locally` path so contributors can build without the original maintainer's Apple developer team certificate.
