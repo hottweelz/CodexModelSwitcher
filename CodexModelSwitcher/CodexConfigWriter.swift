@@ -10,6 +10,11 @@ struct CodexConfigWriter {
     }
 
     func applySelection(_ selected: SelectedModel, in data: AppData) throws {
+        let profile = data.profiles.first { $0.id == "primary" } ?? CodexProfile.defaultProfiles()[0]
+        try applySelection(selected, in: data, profile: profile)
+    }
+
+    func applySelection(_ selected: SelectedModel, in data: AppData, profile: CodexProfile) throws {
         guard let service = data.services.first(where: { $0.id == selected.serviceID }) else {
             throw AppError.missingService
         }
@@ -17,19 +22,17 @@ struct CodexConfigWriter {
             throw AppError.missingModel
         }
 
+        let paths = AppPaths.profilePaths(for: profile)
         try FileManager.default.createDirectory(
-            at: AppPaths.codexDirectory,
+            at: paths.home,
             withIntermediateDirectories: true
         )
 
-        let current = (try? String(contentsOf: AppPaths.codexConfig, encoding: .utf8)) ?? ""
+        let current = (try? String(contentsOf: paths.config, encoding: .utf8)) ?? ""
         let updated = rewriteConfig(current, selected: selected, data: data)
-        try updated.write(to: AppPaths.codexConfig, atomically: true, encoding: .utf8)
+        try updated.write(to: paths.config, atomically: true, encoding: .utf8)
 
-        try writeAPIKeys(for: data.services)
-        if selected.serviceID == "openai" {
-            try writeOpenAIAuth(from: data)
-        }
+        try writeAPIKeys(for: data.services, envFile: paths.envFile)
         if service.requiresAPIKey, !service.apiKey.isEmpty {
             setLaunchEnvironment(name: service.envKey, value: service.apiKey)
         }
@@ -165,15 +168,14 @@ struct CodexConfigWriter {
             .map(String.init)
     }
 
-    private func writeAPIKeys(for services: [CodexService]) throws {
+    private func writeAPIKeys(for services: [CodexService], envFile: URL) throws {
         let exports = services
             .filter { $0.requiresAPIKey && !$0.apiKey.isEmpty }
             .map { "export \($0.envKey)=\(shellEscape($0.apiKey))" }
             .joined(separator: "\n")
 
         try (exports + (exports.isEmpty ? "" : "\n"))
-            .write(to: AppPaths.envFile, atomically: true, encoding: .utf8)
-        try ensureShellProfileSourcesEnvFile()
+            .write(to: envFile, atomically: true, encoding: .utf8)
     }
 
     private func writeOpenAIAuth(from data: AppData) throws {

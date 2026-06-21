@@ -10,6 +10,7 @@ struct ProfileCoreTestRunner {
         try configSummaryParsesTopLevelModelAndProviderOnly()
         try profileConfigEditorWritesSelectedModelAndProviderAtTopLevel()
         try launcherBuildsCommandAndEnvironmentForProfile()
+        try profileStorageJSONContainsProfileLabelsButNoAuthJSON()
         print("ProfileCoreTestRunner: all tests passed")
     }
 
@@ -124,6 +125,23 @@ struct ProfileCoreTestRunner {
         try expectEqual(launch.shellCommand(), "CODEX_HOME='/Users/example/.codex-secondary' codex")
         try expectEqual(launch.environment(base: ["PATH": "/usr/bin"])["CODEX_HOME"], "/Users/example/.codex-secondary")
         try expectEqual(launch.workingDirectory.path, "/Users/example")
+    }
+
+    static func profileStorageJSONContainsProfileLabelsButNoAuthJSON() throws {
+        let profile = CodexProfile(
+            id: "primary",
+            name: "Primary",
+            path: "/Users/example/.codex",
+            isPinned: true
+        )
+
+        let encoded = try JSONEncoder().encode([profile])
+        let json = String(data: encoded, encoding: .utf8)!
+
+        try expectTrue(json.contains("\"path\""), "profile JSON should include profile path")
+        try expectFalse(json.contains("authJSON"), "profile JSON should not contain authJSON")
+        try expectFalse(json.contains("refresh_token"), "profile JSON should not contain refresh_token")
+        try expectFalse(json.contains("access_token"), "profile JSON should not contain access_token")
     }
 
     static func expectEqual<T: Equatable>(_ actual: T, _ expected: T) throws {

@@ -1,16 +1,24 @@
 import Foundation
 
 enum AppPaths {
-    static let codexDirectory = FileManager.default.homeDirectoryForCurrentUser
+    static let appSupportDirectory = CodexModelSwitcherAppPaths.supportDirectory
+    static let appData = CodexModelSwitcherAppPaths.appData
+    static let profilesData = CodexModelSwitcherAppPaths.profilesData
+    static let defaultCodexDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".codex", isDirectory: true)
+    static let codexDirectory = defaultCodexDirectory
     static let codexConfig = codexDirectory.appendingPathComponent("config.toml")
-    static let appData = codexDirectory.appendingPathComponent("model-switcher.json")
+    static let legacyAppData = codexDirectory.appendingPathComponent("model-switcher.json")
     static let loginDirectory = codexDirectory
         .appendingPathComponent("model-switcher", isDirectory: true)
         .appendingPathComponent("login", isDirectory: true)
     static let envFile = codexDirectory.appendingPathComponent("model-switcher.env")
     static let shellProfile = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".zprofile")
+
+    static func profilePaths(for profile: CodexProfile) -> CodexProfilePaths {
+        CodexProfilePaths(profile: profile)
+    }
 }
 
 enum AppError: LocalizedError {

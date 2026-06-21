@@ -24,6 +24,13 @@ final class AppStore: ObservableObject {
         return selectedService?.models.first { $0.id == selected.modelID }
     }
 
+    var selectedProfile: CodexProfile? {
+        guard let selectedProfileID = data.selectedProfileID else {
+            return data.profiles.first
+        }
+        return data.profiles.first { $0.id == selectedProfileID } ?? data.profiles.first
+    }
+
     init() {
         compatibilityProxy.onStatusChange = { [weak self] status in
             Task { @MainActor in
@@ -47,10 +54,15 @@ final class AppStore: ObservableObject {
         if let stored = try? Data(contentsOf: AppPaths.appData),
            let decoded = try? JSONDecoder().decode(AppData.self, from: stored) {
             data = decoded
+        } else if let stored = try? Data(contentsOf: AppPaths.legacyAppData),
+                  let decoded = try? JSONDecoder().decode(AppData.self, from: stored) {
+            data = decoded
         } else {
             data = defaultData()
             persist()
         }
+
+        ensureDefaultProfiles()
 
         if data.selectedModel == nil {
             data.selectedModel = data.services.first.flatMap { service in
@@ -86,7 +98,11 @@ final class AppStore: ObservableObject {
         let selected = SelectedModel(serviceID: serviceID, modelID: modelID)
         data.selectedModel = selected
         do {
-            try configWriter.applySelection(selected, in: data)
+            guard let profile = selectedProfile else {
+                errorMessage = "Choose a Codex profile first."
+                return
+            }
+            try configWriter.applySelection(selected, in: data, profile: profile)
             persist()
             errorMessage = ""
             let selectedService = data.services.first { $0.id == serviceID }
@@ -148,6 +164,21 @@ final class AppStore: ObservableObject {
             statusMessage = ""
             errorMessage = error.localizedDescription
         }
+    }
+
+    func profileHealth(for profile: CodexProfile) -> ProfileHealth {
+        ProfileHealthScanner().health(for: profile)
+    }
+
+    func selectProfile(_ profileID: String) {
+        data.selectedProfileID = profileID
+        persist()
+        statusMessage = "Selected Codex profile."
+        errorMessage = ""
+    }
+
+    func launchCommand(for profile: CodexProfile) -> String {
+        CodexLauncher(profile: profile).shellCommand()
     }
 
     func checkOpenAIAccounts() {
@@ -296,7 +327,7 @@ final class AppStore: ObservableObject {
     private func persist() {
         do {
             try FileManager.default.createDirectory(
-                at: AppPaths.codexDirectory,
+                at: AppPaths.appSupportDirectory,
                 withIntermediateDirectories: true
             )
             let encoded = try JSONEncoder().encode(data)
@@ -309,6 +340,27 @@ final class AppStore: ObservableObject {
 
     private func syncCompatibilityProxy() {
         compatibilityProxy.updateService(selectedService)
+    }
+
+    private func ensureDefaultProfiles() {
+        let defaults = CodexProfile.defaultProfiles()
+        var existingByID = Dictionary(uniqueKeysWithValues: data.profiles.map { ($0.id, $0) })
+        var merged: [CodexProfile] = []
+
+        for profile in defaults {
+            if let existing = existingByID.removeValue(forKey: profile.id) {
+                merged.append(existing)
+            } else {
+                merged.append(profile)
+            }
+        }
+
+        merged.append(contentsOf: existingByID.values.sorted { $0.name < $1.name })
+        data.profiles = merged
+        if data.selectedProfileID == nil || !data.profiles.contains(where: { $0.id == data.selectedProfileID }) {
+            data.selectedProfileID = data.profiles.first?.id
+        }
+        persist()
     }
 
     private func defaultData() -> AppData {
@@ -340,6 +392,8 @@ final class AppStore: ObservableObject {
                 )
             ],
             selectedModel: SelectedModel(serviceID: "openai", modelID: "gpt-5.5"),
+            profiles: CodexProfile.defaultProfiles(),
+            selectedProfileID: "primary",
             openAIAccounts: [],
             selectedOpenAIAccountID: nil
         )

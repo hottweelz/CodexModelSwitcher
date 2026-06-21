@@ -66,6 +66,8 @@ struct SelectedModel: Codable, Equatable {
 struct AppData: Codable {
     var services: [CodexService]
     var selectedModel: SelectedModel?
+    var profiles: [CodexProfile]
+    var selectedProfileID: String?
     var openAIAccounts: [OpenAIAccount]
     var selectedOpenAIAccountID: String?
 
@@ -74,11 +76,15 @@ struct AppData: Codable {
     init(
         services: [CodexService],
         selectedModel: SelectedModel?,
+        profiles: [CodexProfile] = CodexProfile.defaultProfiles(),
+        selectedProfileID: String? = "primary",
         openAIAccounts: [OpenAIAccount] = [],
         selectedOpenAIAccountID: String? = nil
     ) {
         self.services = services
         self.selectedModel = selectedModel
+        self.profiles = profiles
+        self.selectedProfileID = selectedProfileID
         self.openAIAccounts = openAIAccounts
         self.selectedOpenAIAccountID = selectedOpenAIAccountID
     }
@@ -86,6 +92,8 @@ struct AppData: Codable {
     enum CodingKeys: String, CodingKey {
         case services
         case selectedModel
+        case profiles
+        case selectedProfileID
         case openAIAccounts
         case selectedOpenAIAccountID
     }
@@ -94,6 +102,8 @@ struct AppData: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         services = try container.decode([CodexService].self, forKey: .services)
         selectedModel = try container.decodeIfPresent(SelectedModel.self, forKey: .selectedModel)
+        profiles = try container.decodeIfPresent([CodexProfile].self, forKey: .profiles) ?? CodexProfile.defaultProfiles()
+        selectedProfileID = try container.decodeIfPresent(String.self, forKey: .selectedProfileID) ?? profiles.first?.id
         openAIAccounts = try container.decodeIfPresent([OpenAIAccount].self, forKey: .openAIAccounts) ?? []
         selectedOpenAIAccountID = try container.decodeIfPresent(String.self, forKey: .selectedOpenAIAccountID)
     }
