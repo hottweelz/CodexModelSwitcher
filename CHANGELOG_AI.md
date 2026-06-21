@@ -38,6 +38,63 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:20 EDT - Fix profile-first menu surface
+
+Task summary: Fixed the menu bar window that visually collapsed to the compact model/proxy surface instead of showing the profile-first UI.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Replaced the `ViewThatFits` profile/model body with an explicit scroll region and minimum body height so profile rows remain visible in the menu-bar window.
+- Changed the header from `Codex Models` to `Codex Profiles`.
+- Changed the footer to show the selected profile path by default instead of always showing proxy server text.
+- Kept proxy status visible only when a proxy-backed provider is selected or the proxy is starting, active, or erroring.
+- Made the `config.toml` footer action open the selected profile's config instead of always opening the primary `~/.codex/config.toml`.
+- Relaunched the freshly built Debug app and confirmed no process is listening on the proxy port.
+- Recorded the profile-first/proxy-hidden default UI decision in `MEMORY.md`.
+
+Files touched:
+
+- `CodexModelSwitcher/ContentView.swift`
+- `CodexModelSwitcher/AppStore.swift`
+- `MEMORY.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `swift run ProfileCoreTestRunner`
+- `swiftc -typecheck CodexModelSwitcher/*.swift CodexModelSwitcher/ProfileCore/*.swift`
+- `git diff --check`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build`
+- `pkill -x CodexModelSwitcher || true`
+- `/usr/bin/open -n /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app`
+- `pgrep -x CodexModelSwitcher || true`
+- `lsof -nP -iTCP:48117 -sTCP:LISTEN || true`
+- `strings /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app/Contents/MacOS/CodexModelSwitcher.debug.dylib | rg "Codex Profiles|Codex Models|Proxy server|Proxy active|No profile|config.toml"`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug -showBuildSettings | rg "CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM"`
+
+Results: Core runner passed, Swift typecheck passed, `git diff --check` passed, Xcode Debug build passed, and the fresh app relaunched as PID `53178`. No listener was present on `127.0.0.1:48117`. The built Debug dylib contains `Codex Profiles` and does not contain the old `Codex Models` title.
+
+Decisions made:
+
+- The menu should make profile switching the first visible workflow.
+- Proxy status should not be displayed as default chrome when proxy is inactive and the selected provider does not use it.
+
+Known issues:
+
+- The agent cannot directly inspect the menu-bar pixels from this environment; maintainer visual confirmation is still needed.
+- The provider editor still includes the compatibility proxy toggle for advanced/audited use.
+
+Next recommended steps:
+
+- Click the menu bar icon and confirm the profile rows are visible above the model list.
+- Copy one profile launch command from the UI and verify it launches Codex with the selected `CODEX_HOME`.
+
+Notes for the next agent: If the old compact UI still appears, verify the running PID points at the freshly built DerivedData app and kill any duplicate `CodexModelSwitcher` processes before relaunching.
+
+MEMORY.md update: added default profile-first/proxy-hidden UI decision.
+
 ## 2026-06-21 19:14 EDT - Verify Debug app launch
 
 Task summary: Verified the locally signed Debug app can launch as a menu bar process after the maintainer ran the build/run path.

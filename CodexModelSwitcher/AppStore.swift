@@ -193,6 +193,23 @@ final class AppStore: ObservableObject {
         NSWorkspace.shared.open(URL(fileURLWithPath: profile.path, isDirectory: true))
     }
 
+    func openSelectedProfileConfig() {
+        guard let profile = selectedProfile else {
+            errorMessage = "Choose a Codex profile first."
+            return
+        }
+
+        let paths = AppPaths.profilePaths(for: profile)
+        if FileManager.default.fileExists(atPath: paths.config.path) {
+            NSWorkspace.shared.open(paths.config)
+            errorMessage = ""
+        } else {
+            NSWorkspace.shared.open(paths.home)
+            statusMessage = "\(profile.name) does not have a config.toml yet."
+            errorMessage = ""
+        }
+    }
+
     func checkOpenAIAccounts() {
         guard !data.openAIAccounts.isEmpty else { return }
 

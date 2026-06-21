@@ -48,7 +48,7 @@ struct ContentView: View {
     }
 
     private var maxBodyHeight: CGFloat {
-        editorSession == nil ? 360 : maxPanelHeight - 52
+        min(editorSession == nil ? 520 : maxPanelHeight - 52, maxPanelHeight - 78)
     }
 
     private var header: some View {
@@ -87,7 +87,7 @@ struct ContentView: View {
                             .strokeBorder(.white.opacity(0.18), lineWidth: 1)
                     }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Codex Models")
+                    Text("Codex Profiles")
                         .font(.system(.headline, design: .rounded).weight(.semibold))
                     Text(currentSelectionText)
                         .font(.subheadline)
@@ -118,16 +118,12 @@ struct ContentView: View {
     private var bodySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let editorSession {
-                ViewThatFits(in: .vertical) {
+                ScrollView {
                     editorView(for: editorSession)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                    ScrollView {
-                        editorView(for: editorSession)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                    }
                 }
+                .frame(maxHeight: maxBodyHeight, alignment: .top)
             } else {
                 serviceList
             }
@@ -152,17 +148,12 @@ struct ContentView: View {
     }
 
     private var serviceList: some View {
-        ViewThatFits(in: .vertical) {
+        ScrollView {
             profileAndServiceStack
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-            ScrollView {
-                profileAndServiceStack
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-            }
         }
-        .frame(maxHeight: maxBodyHeight)
+        .frame(minHeight: min(430, maxBodyHeight), maxHeight: maxBodyHeight, alignment: .top)
     }
 
     private var profileAndServiceStack: some View {
@@ -241,12 +232,16 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            proxyStatusView
+            if shouldShowProxyStatus {
+                proxyStatusView
+            } else {
+                selectedProfileFooter
+            }
 
             Spacer()
 
             Button("config.toml") {
-                NSWorkspace.shared.open(AppPaths.codexConfig)
+                store.openSelectedProfileConfig()
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -282,22 +277,45 @@ struct ContentView: View {
                     .frame(width: 10, height: 10)
             }
 
-            Text("Proxy server \(CompatibilityProxyServer.address)")
+            Text(proxyStatusLabel)
                 .foregroundStyle(.secondary)
         }
         .help(proxyStatusHelp)
     }
 
-    private var proxyStatusText: String {
+    private var selectedProfileFooter: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "folder")
+                .foregroundStyle(.secondary)
+            Text(selectedProfileFooterText)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .help(selectedProfileFooterHelp)
+    }
+
+    private var shouldShowProxyStatus: Bool {
+        if store.selectedService?.useCompatibilityProxy == true {
+            return true
+        }
+        switch store.proxyStatus {
+        case .starting, .active, .error:
+            return true
+        case .notRunning:
+            return false
+        }
+    }
+
+    private var proxyStatusLabel: String {
         switch store.proxyStatus {
         case .starting:
-            return "Starting"
+            return "Proxy starting"
         case .notRunning:
-            return "Not running"
+            return "Proxy not running"
         case .active:
-            return "Active"
+            return "Proxy active \(CompatibilityProxyServer.address)"
         case .error:
-            return "Error"
+            return "Proxy error"
         }
     }
 
@@ -322,6 +340,24 @@ struct ContentView: View {
         }
 
         return "\(profile.name) / \(service.name) / \(model.name)"
+    }
+
+    private var selectedProfileFooterText: String {
+        guard let profile = store.selectedProfile else {
+            return "No profile"
+        }
+        return "\(profile.name) \(shortPath(profile.path))"
+    }
+
+    private var selectedProfileFooterHelp: String {
+        guard let profile = store.selectedProfile else {
+            return "No Codex profile selected"
+        }
+        return "Selected Codex profile: \(profile.path)"
+    }
+
+    private func shortPath(_ path: String) -> String {
+        path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
     }
 }
 
