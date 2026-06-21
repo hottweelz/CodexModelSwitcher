@@ -8,6 +8,8 @@ struct ProfileCoreTestRunner {
         try profilePathsResolveInsideSelectedProfile()
         try healthScannerReportsAuthConfigAndSelectedModelWithoutReadingSecrets()
         try configSummaryParsesTopLevelModelAndProviderOnly()
+        try profileConfigEditorWritesSelectedModelAndProviderAtTopLevel()
+        try launcherBuildsCommandAndEnvironmentForProfile()
         print("ProfileCoreTestRunner: all tests passed")
     }
 
@@ -81,6 +83,49 @@ struct ProfileCoreTestRunner {
         try expectTrue(summary.providerIDs.contains("openrouter"), "summary should include provider table id")
     }
 
+    static func profileConfigEditorWritesSelectedModelAndProviderAtTopLevel() throws {
+        let original = """
+        model = "old-model"
+        model_provider = "old-provider"
+
+        [model_providers.openrouter]
+        name = "OpenRouter"
+        base_url = "https://openrouter.ai/api/v1"
+        """
+
+        let updated = ProfileConfigEditor().rewrite(
+            original,
+            selectedModel: "moonshotai/kimi-k2.5",
+            selectedProvider: "openrouter"
+        )
+
+        try expectTrue(updated.hasPrefix("""
+        model = "moonshotai/kimi-k2.5"
+        model_provider = "openrouter"
+        """), "updated config should start with selected model and provider")
+        try expectTrue(updated.contains("[model_providers.openrouter]"), "existing provider table should remain")
+        try expectFalse(updated.contains("model = \"old-model\""), "old top-level model should be removed")
+        try expectFalse(updated.contains("model_provider = \"old-provider\""), "old top-level provider should be removed")
+    }
+
+    static func launcherBuildsCommandAndEnvironmentForProfile() throws {
+        let profile = CodexProfile(
+            id: "secondary",
+            name: "Secondary",
+            path: "/Users/example/.codex-secondary",
+            isPinned: true
+        )
+
+        let launch = CodexLauncher(
+            profile: profile,
+            workingDirectory: URL(fileURLWithPath: "/Users/example", isDirectory: true)
+        )
+
+        try expectEqual(launch.shellCommand(), "CODEX_HOME='/Users/example/.codex-secondary' codex")
+        try expectEqual(launch.environment(base: ["PATH": "/usr/bin"])["CODEX_HOME"], "/Users/example/.codex-secondary")
+        try expectEqual(launch.workingDirectory.path, "/Users/example")
+    }
+
     static func expectEqual<T: Equatable>(_ actual: T, _ expected: T) throws {
         if actual != expected {
             throw TestFailure("Expected \(expected), got \(actual)")
@@ -89,6 +134,12 @@ struct ProfileCoreTestRunner {
 
     static func expectTrue(_ condition: Bool, _ message: String) throws {
         if !condition {
+            throw TestFailure(message)
+        }
+    }
+
+    static func expectFalse(_ condition: Bool, _ message: String) throws {
+        if condition {
             throw TestFailure(message)
         }
     }
