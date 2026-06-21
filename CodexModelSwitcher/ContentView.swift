@@ -153,16 +153,41 @@ struct ContentView: View {
 
     private var serviceList: some View {
         ViewThatFits(in: .vertical) {
-            serviceStack
+            profileAndServiceStack
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             ScrollView {
-                serviceStack
+                profileAndServiceStack
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
             }
         }
         .frame(maxHeight: maxBodyHeight)
+    }
+
+    private var profileAndServiceStack: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            profileStack
+            Divider()
+            Text("Models")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+            serviceStack
+        }
+    }
+
+    private var profileStack: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Profiles")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+            ForEach(store.data.profiles) { profile in
+                ProfileRowView(profile: profile)
+                    .environmentObject(store)
+            }
+        }
     }
 
     private var serviceStack: some View {
@@ -290,11 +315,13 @@ struct ContentView: View {
     }
 
     private var currentSelectionText: String {
-        guard let service = store.selectedService, let model = store.selectedModel else {
-            return "No model selected"
+        guard let profile = store.selectedProfile,
+              let service = store.selectedService,
+              let model = store.selectedModel else {
+            return "No profile selected"
         }
 
-        return "\(service.name) / \(model.name)"
+        return "\(profile.name) / \(service.name) / \(model.name)"
     }
 }
 
@@ -303,6 +330,115 @@ private struct EditorSession: Identifiable {
     let title: String
     let originalID: String?
     var form: ServiceFormData
+}
+
+private struct ProfileRowView: View {
+    @EnvironmentObject private var store: AppStore
+    let profile: CodexProfile
+    @State private var isHovering = false
+
+    var body: some View {
+        let health = store.profileHealth(for: profile)
+
+        HStack(spacing: 6) {
+            Button {
+                store.selectProfile(profile.id)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: iconName(for: health.status))
+                        .foregroundStyle(iconColor(for: health.status))
+                        .frame(width: 16)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(profile.name)
+                            .font(.system(.body, design: .rounded).weight(.medium))
+                            .lineLimit(1)
+                        Text(detailText(for: health))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    if store.data.selectedProfileID == profile.id {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isHovering {
+                Button {
+                    store.copyLaunchCommand(for: profile)
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .help("Copy launch command")
+
+                Button {
+                    store.openProfileFolder(profile)
+                } label: {
+                    Image(systemName: "folder")
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.borderless)
+                .help("Open profile folder")
+            }
+        }
+        .padding(.vertical, 5)
+        .padding(.horizontal, 6)
+        .background(store.data.selectedProfileID == profile.id ? Color.accentColor.opacity(0.14) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .onHover { isHovering = $0 }
+    }
+
+    private func detailText(for health: ProfileHealth) -> String {
+        switch health.status {
+        case .missing:
+            return "\(shortPath(profile.path)) - missing"
+        case .notLoggedIn:
+            return "\(shortPath(profile.path)) - not logged in"
+        case .noConfig:
+            return "\(shortPath(profile.path)) - no config"
+        case .ready:
+            let summary = [health.selectedProvider, health.selectedModel]
+                .compactMap { $0 }
+                .joined(separator: " / ")
+            return summary.isEmpty ? shortPath(profile.path) : summary
+        }
+    }
+
+    private func iconName(for status: ProfileHealthStatus) -> String {
+        switch status {
+        case .missing:
+            return "questionmark.circle"
+        case .notLoggedIn:
+            return "person.crop.circle.badge.exclamationmark"
+        case .noConfig:
+            return "doc.badge.gearshape"
+        case .ready:
+            return "checkmark.circle.fill"
+        }
+    }
+
+    private func iconColor(for status: ProfileHealthStatus) -> Color {
+        switch status {
+        case .ready:
+            return .green
+        case .missing, .notLoggedIn, .noConfig:
+            return .orange
+        }
+    }
+
+    private func shortPath(_ path: String) -> String {
+        path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+    }
 }
 
 private struct ServiceSectionView: View {
@@ -460,7 +596,7 @@ private struct ServiceSectionView: View {
             .popover(isPresented: $isOpenAIAccountDropdownOpen, arrowEdge: .top) {
                 openAIAccountDropdown
             }
-            .onChange(of: isOpenAIAccountDropdownOpen) { isOpen in
+            .onChange(of: isOpenAIAccountDropdownOpen) { _, isOpen in
                 if isOpen {
                     store.checkOpenAIAccounts()
                 }
@@ -640,7 +776,9 @@ struct ServiceEditorView: View {
     }
 }
 
+#if DEBUG && canImport(PreviewsMacros)
 #Preview {
     ContentView()
         .environmentObject(AppStore())
 }
+#endif

@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -179,6 +180,17 @@ final class AppStore: ObservableObject {
 
     func launchCommand(for profile: CodexProfile) -> String {
         CodexLauncher(profile: profile).shellCommand()
+    }
+
+    func copyLaunchCommand(for profile: CodexProfile) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(launchCommand(for: profile), forType: .string)
+        statusMessage = "Copied launch command for \(profile.name)."
+        errorMessage = ""
+    }
+
+    func openProfileFolder(_ profile: CodexProfile) {
+        NSWorkspace.shared.open(URL(fileURLWithPath: profile.path, isDirectory: true))
     }
 
     func checkOpenAIAccounts() {
