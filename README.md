@@ -15,6 +15,7 @@ The app treats each Codex home directory as an account boundary. It can discover
 - Add, edit, and delete custom model providers.
 - Manage multiple models per provider.
 - Write model/provider config to the selected profile only.
+- Show provider key/proxy status without displaying key values.
 - Copy a `CODEX_HOME='/path/to/profile' codex` launch command for any profile.
 - Keep the app menu-bar only, without a Dock icon.
 
@@ -25,6 +26,8 @@ Codex may need to be restarted after changing provider or model settings.
 Each profile keeps its own `auth.json`, `config.toml`, sessions, memories, and local state. The app does not copy profile auth JSON by default.
 
 API keys and OpenAI credentials are sensitive. Treat files under `~/.codex*` like secrets.
+
+Provider settings are available from the gear button. If a provider key is not saved in the app, generated config uses the provider's `env_key` so Codex can still use an environment variable supplied outside the app.
 
 ## Development
 

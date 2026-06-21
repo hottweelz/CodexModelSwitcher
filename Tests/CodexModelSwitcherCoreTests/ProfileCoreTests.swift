@@ -11,6 +11,7 @@ struct ProfileCoreTestRunner {
         try profileConfigEditorWritesSelectedModelAndProviderAtTopLevel()
         try launcherBuildsCommandAndEnvironmentForProfile()
         try profileStorageJSONContainsProfileLabelsButNoAuthJSON()
+        try profileDisplayTextNamesSelectedConfigWriteTarget()
         print("ProfileCoreTestRunner: all tests passed")
     }
 
@@ -142,6 +143,25 @@ struct ProfileCoreTestRunner {
         try expectFalse(json.contains("authJSON"), "profile JSON should not contain authJSON")
         try expectFalse(json.contains("refresh_token"), "profile JSON should not contain refresh_token")
         try expectFalse(json.contains("access_token"), "profile JSON should not contain access_token")
+    }
+
+    static func profileDisplayTextNamesSelectedConfigWriteTarget() throws {
+        let home = URL(fileURLWithPath: "/Users/example", isDirectory: true)
+        let profile = CodexProfile(
+            id: "secondary",
+            name: "Secondary",
+            path: "/Users/example/.codex-secondary",
+            isPinned: true
+        )
+
+        try expectEqual(
+            ProfileDisplayText.selectedProfileFooter(for: profile, homeDirectory: home),
+            "Secondary ~/.codex-secondary"
+        )
+        try expectEqual(
+            ProfileDisplayText.modelSelectionTarget(for: profile),
+            "Models update Secondary config.toml"
+        )
     }
 
     static func expectEqual<T: Equatable>(_ actual: T, _ expected: T) throws {

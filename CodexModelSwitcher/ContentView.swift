@@ -96,6 +96,18 @@ struct ContentView: View {
                 }
                 Spacer()
                 Button {
+                    editSelectedService()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.borderless)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .help("Provider settings")
+                .disabled(store.selectedService == nil)
+
+                Button {
                     store.clearError()
                     editorSession = EditorSession(
                         title: "Add Provider",
@@ -159,6 +171,7 @@ struct ContentView: View {
     private var profileAndServiceStack: some View {
         VStack(alignment: .leading, spacing: 10) {
             profileStack
+            selectedTargetNotice
             Divider()
             Text("Models")
                 .font(.caption)
@@ -181,6 +194,18 @@ struct ContentView: View {
         }
     }
 
+    private var selectedTargetNotice: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "scope")
+                .foregroundStyle(.secondary)
+            Text(selectedTargetNoticeText)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .font(.caption)
+        .padding(.horizontal, 4)
+    }
+
     private var serviceStack: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(Array(store.data.services.enumerated()), id: \.element.id) { index, service in
@@ -193,7 +218,7 @@ struct ContentView: View {
                         onEdit: {
                             store.clearError()
                             editorSession = EditorSession(
-                                title: "Edit Service",
+                                title: "Provider Settings",
                                 originalID: service.id,
                                 form: ServiceFormData(service: service)
                             )
@@ -228,6 +253,16 @@ struct ContentView: View {
         if store.errorMessage.isEmpty {
             self.editorSession = nil
         }
+    }
+
+    private func editSelectedService() {
+        guard let service = store.selectedService else { return }
+        store.clearError()
+        editorSession = EditorSession(
+            title: "Provider Settings",
+            originalID: service.id,
+            form: ServiceFormData(service: service)
+        )
     }
 
     private var footer: some View {
@@ -346,7 +381,7 @@ struct ContentView: View {
         guard let profile = store.selectedProfile else {
             return "No profile"
         }
-        return "\(profile.name) \(shortPath(profile.path))"
+        return ProfileDisplayText.selectedProfileFooter(for: profile)
     }
 
     private var selectedProfileFooterHelp: String {
@@ -357,7 +392,14 @@ struct ContentView: View {
     }
 
     private func shortPath(_ path: String) -> String {
-        path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+        ProfileDisplayText.shortPath(path)
+    }
+
+    private var selectedTargetNoticeText: String {
+        guard let profile = store.selectedProfile else {
+            return "Choose a target profile"
+        }
+        return ProfileDisplayText.modelSelectionTarget(for: profile)
     }
 }
 
@@ -435,19 +477,22 @@ private struct ProfileRowView: View {
     }
 
     private func detailText(for health: ProfileHealth) -> String {
+        let prefix = store.data.selectedProfileID == profile.id ? "Target - " : ""
+        let detail: String
         switch health.status {
         case .missing:
-            return "\(shortPath(profile.path)) - missing"
+            detail = "\(shortPath(profile.path)) - missing"
         case .notLoggedIn:
-            return "\(shortPath(profile.path)) - not logged in"
+            detail = "\(shortPath(profile.path)) - not logged in"
         case .noConfig:
-            return "\(shortPath(profile.path)) - no config"
+            detail = "\(shortPath(profile.path)) - no config"
         case .ready:
             let summary = [health.selectedProvider, health.selectedModel]
                 .compactMap { $0 }
                 .joined(separator: " / ")
-            return summary.isEmpty ? shortPath(profile.path) : summary
+            detail = summary.isEmpty ? shortPath(profile.path) : summary
         }
+        return prefix + detail
     }
 
     private func iconName(for status: ProfileHealthStatus) -> String {
@@ -473,7 +518,7 @@ private struct ProfileRowView: View {
     }
 
     private func shortPath(_ path: String) -> String {
-        path.replacingOccurrences(of: FileManager.default.homeDirectoryForCurrentUser.path, with: "~")
+        ProfileDisplayText.shortPath(path)
     }
 }
 
@@ -504,6 +549,8 @@ private struct ServiceSectionView: View {
                 }
             }
 
+            serviceStatusLine
+
             VStack(spacing: 3) {
                 ForEach(service.models) { model in
                     Button {
@@ -527,11 +574,6 @@ private struct ServiceSectionView: View {
                 }
             }
 
-            if service.requiresAPIKey && service.apiKey.isEmpty {
-                Label("API key missing", systemImage: "key.slash")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
         }
         .padding(.vertical, 7)
         .contentShape(Rectangle())
@@ -549,15 +591,13 @@ private struct ServiceSectionView: View {
             Button {
                 onEdit()
             } label: {
-                Image(systemName: "pencil")
+                Image(systemName: "gearshape")
                     .font(.system(size: 12, weight: .medium))
                     .frame(width: 22, height: 22)
             }
             .buttonStyle(.borderless)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .help("Edit service")
-            .opacity(isHovering ? 1 : 0)
-            .allowsHitTesting(isHovering)
+            .help("Provider settings")
 
             Button(role: .destructive) {
                 store.deleteService(service)
@@ -572,6 +612,25 @@ private struct ServiceSectionView: View {
             .disabled(store.data.services.count == 1)
             .opacity(isHovering ? 1 : 0)
             .allowsHitTesting(isHovering)
+        }
+    }
+
+    @ViewBuilder
+    private var serviceStatusLine: some View {
+        if service.requiresAPIKey || service.useCompatibilityProxy {
+            HStack(spacing: 8) {
+                if service.requiresAPIKey {
+                    Label(service.apiKey.isEmpty ? "No API key" : "API key saved", systemImage: service.apiKey.isEmpty ? "key.slash" : "key.fill")
+                        .foregroundStyle(service.apiKey.isEmpty ? .orange : .secondary)
+                }
+
+                if service.useCompatibilityProxy {
+                    Label("Proxy enabled", systemImage: "network")
+                        .foregroundStyle(.orange)
+                }
+            }
+            .font(.caption)
+            .labelStyle(.titleAndIcon)
         }
     }
 
@@ -767,9 +826,9 @@ struct ServiceEditorView: View {
                 fieldRow("Env key", text: $form.envKey, prompt: "EXAMPLE_API_KEY")
 
                 GridRow {
-                    Text("Proxy")
+                    Text("Advanced")
                         .foregroundStyle(.secondary)
-                    Toggle("Use compatibility proxy", isOn: $form.useCompatibilityProxy)
+                    Toggle("Local compatibility proxy", isOn: $form.useCompatibilityProxy)
                         .toggleStyle(.checkbox)
                 }
 

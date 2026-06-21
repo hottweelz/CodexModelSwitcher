@@ -38,6 +38,69 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:28 EDT - Add provider settings and key status clarity
+
+Task summary: Made provider settings discoverable, clarified the target profile write path, and verified OpenRouter is configured without a saved app key or proxy enabled.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Added a core `ProfileDisplayText` helper with tests for selected-profile footer and model-write target text.
+- Added a top-right provider settings gear for the currently selected provider.
+- Made provider row settings visible with a gear icon instead of hiding edit access behind hover-only behavior.
+- Added target-profile text so the model section says which profile's `config.toml` will be updated.
+- Added non-secret provider status badges for API key saved/missing and proxy enabled.
+- Renamed the provider editor proxy row to `Advanced` / `Local compatibility proxy`.
+- Documented provider key status and environment-key behavior in `README.md`.
+- Recorded the durable setting/key-status UI decision in `MEMORY.md`.
+
+Files touched:
+
+- `CodexModelSwitcher/ContentView.swift`
+- `CodexModelSwitcher/ProfileCore/ProfileDisplayText.swift`
+- `Tests/CodexModelSwitcherCoreTests/ProfileCoreTests.swift`
+- `README.md`
+- `MEMORY.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `jq '.services[] | {id,name,envKey,hasAPIKey:(.apiKey | length > 0),useCompatibilityProxy,models:(.models | map(.id))}' "$HOME/Library/Application Support/CodexModelSwitcher/app-data.json"`
+- `swift run ProfileCoreTestRunner` (red, expected failure before `ProfileDisplayText` existed)
+- `swift run ProfileCoreTestRunner`
+- `swiftc -typecheck CodexModelSwitcher/*.swift CodexModelSwitcher/ProfileCore/*.swift`
+- `git diff --check`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build`
+- `pkill -x CodexModelSwitcher || true`
+- `/usr/bin/open -n /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app`
+- `pgrep -x CodexModelSwitcher || true`
+- `lsof -nP -iTCP:48117 -sTCP:LISTEN || true`
+- `strings /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app/Contents/MacOS/CodexModelSwitcher.debug.dylib | rg "Provider Settings|No API key|API key saved|Models update|Local compatibility proxy|Target -"`
+- `jq '.services[] | select(.id=="openrouter") | {id,name,envKey,hasAPIKey:(.apiKey | length > 0),useCompatibilityProxy,modelCount:(.models|length)}' "$HOME/Library/Application Support/CodexModelSwitcher/app-data.json"`
+
+Results: The red test failed as expected before adding `ProfileDisplayText`; after implementation, `swift run ProfileCoreTestRunner`, Swift typecheck, `git diff --check`, and Xcode Debug build all passed. The fresh app relaunched as PID `62962`. No listener was present on `127.0.0.1:48117`. The app data check showed OpenRouter has `envKey` set to `OPENROUTER_API_KEY`, `hasAPIKey: false`, and `useCompatibilityProxy: false` without printing any key value.
+
+Decisions made:
+
+- Treat provider settings as a first-class gear action in the menu bar surface.
+- Show provider key/proxy state without exposing secret values.
+- Keep the proxy as an explicit advanced local option rather than normal/default UI.
+
+Known issues:
+
+- The agent cannot directly inspect the menu-bar pixels from this environment; maintainer visual confirmation is still needed.
+- OpenRouter will not use an app-saved key until one is saved in Provider Settings, though generated config can still rely on `OPENROUTER_API_KEY` from the launch environment.
+
+Next recommended steps:
+
+- Open the OpenRouter provider settings gear and save the OpenRouter API key if the app should manage/inject it.
+- Keep `Local compatibility proxy` off unless intentionally testing proxy-backed provider compatibility.
+
+Notes for the next agent: Do not print provider API keys when checking app data; use boolean key-presence checks only.
+
+MEMORY.md update: added provider settings/key-status decision.
+
 ## 2026-06-21 19:20 EDT - Fix profile-first menu surface
 
 Task summary: Fixed the menu bar window that visually collapsed to the compact model/proxy surface instead of showing the profile-first UI.
