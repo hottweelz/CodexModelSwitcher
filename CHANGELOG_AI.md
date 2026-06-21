@@ -38,6 +38,77 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 18:19 EDT - Implement profile-first Codex switcher
+
+Task summary: Implemented profile-first Codex home management with `CODEX_HOME` launch support and profile-scoped config writing.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Added a SwiftPM-backed profile core for known profile discovery, profile paths, health scanning, non-secret config summary parsing, config rewrite helpers, and launch command construction.
+- Added an executable profile core test runner because local Command Line Tools did not provide `XCTest` or Swift `Testing`.
+- Wired app state to selected Codex profiles and moved app data storage to `~/Library/Application Support/CodexModelSwitcher/app-data.json`.
+- Added profile-scoped config writing so model/provider selection writes to the selected profile's `config.toml`.
+- Updated the menu bar UI to show profiles first with profile health, copy launch command, and open folder actions.
+- Updated README for profile-first usage and conservative proxy posture.
+- Added `.gitignore` for SwiftPM `.build/` output.
+
+Files touched:
+
+- `.gitignore`
+- `Package.swift`
+- `CodexModelSwitcher/ProfileCore/CodexProfile.swift`
+- `CodexModelSwitcher/ProfileCore/CodexProfilePaths.swift`
+- `CodexModelSwitcher/ProfileCore/ProfileConfigSummary.swift`
+- `CodexModelSwitcher/ProfileCore/ProfileHealthScanner.swift`
+- `CodexModelSwitcher/ProfileCore/ProfileConfigEditor.swift`
+- `CodexModelSwitcher/ProfileCore/CodexLauncher.swift`
+- `Tests/CodexModelSwitcherCoreTests/ProfileCoreTests.swift`
+- `CodexModelSwitcher/Types.swift`
+- `CodexModelSwitcher/Utils.swift`
+- `CodexModelSwitcher/CodexConfigWriter.swift`
+- `CodexModelSwitcher/AppStore.swift`
+- `CodexModelSwitcher/ContentView.swift`
+- `README.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `swift run ProfileCoreTestRunner`
+- `swiftc -typecheck CodexModelSwitcher/*.swift CodexModelSwitcher/ProfileCore/*.swift`
+- `rg -n "authJSON|refresh_token|access_token" CodexModelSwitcher/ProfileCore Tests README.md`
+- `rg -n "authJSON|refresh_token|access_token" CodexModelSwitcher/ProfileCore README.md`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build`
+- XcodeBuildMCP `session_show_defaults`
+- XcodeBuildMCP `list_schemes`
+- `git status --short --branch`
+
+Results: `swift run ProfileCoreTestRunner` passed, `swiftc -typecheck` passed for all app and profile core Swift files, and production-scope token-string scan found no `authJSON`, `refresh_token`, or `access_token` matches in `CodexModelSwitcher/ProfileCore` or `README.md`. Full Xcode build could not run because this machine's active developer directory is `/Library/Developer/CommandLineTools` and no `/Applications/Xcode*.app` was visible; XcodeBuildMCP also failed to list schemes because `xcrun` could not find `xcodebuild`.
+
+Decisions made:
+
+- `CODEX_HOME` profile directories are the account boundary.
+- Profile labels come from defaults or user state, not token parsing.
+- Proxy remains outside the default v1 trust path.
+- The local executable runner is the test harness until a full Xcode test setup is available.
+
+Known issues:
+
+- Full Xcode project build remains unverified in this environment because Xcode is not installed or not selected.
+- The legacy OpenAI account-management code still exists in the app but is no longer the primary profile-switching path.
+- The compatibility proxy remains present in source but is not promoted as trusted default functionality.
+
+Next recommended steps:
+
+- Run a full Xcode build on a machine with Xcode selected.
+- Manually launch the menu bar app, confirm all five existing profiles appear, copy one launch command, and verify the command starts Codex with the selected `CODEX_HOME`.
+- Consider a follow-up cleanup to hide or remove legacy OpenAI account UI after manual profile-first validation.
+
+Notes for the next agent: Treat profile directories as the account boundary; do not reintroduce default auth JSON copying between profiles.
+
+MEMORY.md update: not needed
+
 ## 2026-06-21 17:46 EDT - Explore proxy-safe menu bar direction
 
 Task summary: Inspected the native macOS menu bar app and existing local compatibility proxy to answer how to use the package idea without trusting third-party proxies.
