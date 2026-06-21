@@ -13,6 +13,7 @@
 - Debug builds should use Xcode's local `Sign to Run Locally` identity so contributors can build without the original maintainer's Apple developer team certificate.
 - The default menu-bar surface should be profile-first and should not show proxy status unless a proxy-backed provider is selected or the proxy is active/erroring.
 - Provider settings should be discoverable from the main menu bar surface, while API key status should be visible without exposing key values.
+- Proxy hardening and proxy-first workflows are Day 2 work; v1 should stay focused on profile-first switching and direct provider config.
 
 ## Security Constraints
 

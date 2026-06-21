@@ -38,6 +38,48 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:32 EDT - Record proxy as Day 2 work
+
+Task summary: Recorded the maintainer decision that proxy hardening and proxy-first workflows are Day 2 work, not part of the current profile-first v1 push.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Added the proxy Day 2 boundary to `MEMORY.md`.
+- Added this handoff entry.
+- No app source behavior changed.
+
+Files touched:
+
+- `MEMORY.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `sed -n '1,140p' MEMORY.md`
+- `sed -n '1,120p' CHANGELOG_AI.md`
+- `git status --short --branch`
+- `date '+%Y-%m-%d %H:%M %Z'`
+
+Results: Project memory now says proxy hardening and proxy-first workflows are Day 2 work, while v1 stays focused on profile-first switching and direct provider config.
+
+Decisions made:
+
+- Keep proxy work out of the immediate v1 implementation unless explicitly reopened.
+
+Known issues:
+
+- none
+
+Next recommended steps:
+
+- Continue validating profile-first switching and provider settings before reopening proxy hardening.
+
+Notes for the next agent: Do not expand proxy scope during v1 polish unless the maintainer explicitly asks for Day 2 proxy work.
+
+MEMORY.md update: added proxy Day 2 boundary.
+
 ## 2026-06-21 19:28 EDT - Add provider settings and key status clarity
 
 Task summary: Made provider settings discoverable, clarified the target profile write path, and verified OpenRouter is configured without a saved app key or proxy enabled.
