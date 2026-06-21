@@ -38,6 +38,63 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:34 EDT - Expand README instructions
+
+Task summary: Updated the README with current profile-first usage, provider settings, build/run instructions, secret-handling notes, and proxy Day 2 guidance.
+
+Selected agent team: technical-writer, product-manager, security-reviewer
+
+Changes made:
+
+- Rewrote the README introduction around local-first Codex profile switching.
+- Added a current posture section for profile-first v1, no default auth copying, key visibility, and proxy Day 2.
+- Added Xcode and command-line build instructions.
+- Added safe profile usage instructions and a `CODEX_HOME` launch-command example.
+- Added provider settings and OpenRouter-style environment key guidance.
+- Added storage/write-path notes for app data, profile config, profile env files, and legacy app data.
+- Added proxy status guidance that keeps proxy behavior advanced/off by default.
+- Added development check commands and contributor notes.
+
+Files touched:
+
+- `README.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `sed -n '1,220p' /Users/jamestylee/.ai/AGENTS.md`
+- `sed -n '1,220p' MEMORY.md`
+- `sed -n '1,220p' CHANGELOG_AI.md`
+- `sed -n '1,220p' /Users/jamestylee/.ai/.ai/rules/agent-team-selection.md`
+- `sed -n '1,220p' /Users/jamestylee/.ai/.ai/rules/ai-handoff.md`
+- `find /Users/jamestylee/.ai/.ai/agents -maxdepth 2 -type f | sort`
+- `sed -n '1,260p' README.md`
+- `rg --files -n`
+- `git log --oneline -8`
+- `rg -n "Day 2|CODEX_HOME|OPENROUTER_API_KEY|auth\\.json|127\\.0\\.0\\.1|ProfileCoreTestRunner|Sign to Run Locally|No API key|API key saved" README.md`
+- `git diff --check`
+- `git diff --stat`
+- `date '+%Y-%m-%d %H:%M %Z'`
+
+Results: README now documents the current profile-first workflow, provider settings/key behavior, local build path, app/profile write paths, and proxy Day 2 boundary. `git diff --check` passed.
+
+Decisions made:
+
+- Keep README focused on safe local operation and contributor onboarding rather than marketing copy.
+
+Known issues:
+
+- The screenshot may lag behind the current menu surface if not manually refreshed.
+
+Next recommended steps:
+
+- Refresh `screenshot.png` after final UI validation.
+- Continue validating profile switching before reopening Day 2 proxy work.
+
+Notes for the next agent: README wording intentionally avoids presenting proxy as the default path.
+
+MEMORY.md update: not needed
+
 ## 2026-06-21 19:32 EDT - Record proxy as Day 2 work
 
 Task summary: Recorded the maintainer decision that proxy hardening and proxy-first workflows are Day 2 work, not part of the current profile-first v1 push.

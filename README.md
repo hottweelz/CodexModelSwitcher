@@ -2,16 +2,24 @@
 
 # Codex Model Switcher
 
-A small macOS menu bar app for managing local Codex profiles and model provider configurations.
+A local-first macOS menu bar app for switching between Codex home profiles and editing model/provider configuration without copying account credentials between profiles.
 
-The app treats each Codex home directory as an account boundary. It can discover profiles such as `~/.codex`, `~/.codex-secondary`, `~/.codex-free-1`, `~/.codex-free-2`, and `~/.codex-free-3`, then edit the selected profile's `config.toml` or copy a launch command using `CODEX_HOME`.
+The app treats each Codex home directory as an account boundary. It discovers profiles such as `~/.codex`, `~/.codex-secondary`, `~/.codex-free-1`, `~/.codex-free-2`, and `~/.codex-free-3`, then lets you choose which profile is the target for model/provider config writes.
 
 ![Screenshot](/screenshot.png)
 
+## Current Posture
+
+- Profile-first v1: choose a target `CODEX_HOME`, then update that profile's `config.toml`.
+- No auth copying by default: each profile keeps its own `auth.json`, `config.toml`, sessions, memories, and local state.
+- Provider keys are treated as secrets: the UI shows key presence, not key values.
+- Proxy is Day 2 work: the local compatibility proxy exists in source, but it is advanced/off by default and should not be part of the default v1 workflow.
+
 ## Features
 
-- Discover and switch between local Codex profiles.
+- Discover known local Codex profiles.
 - Show profile health without displaying token contents.
+- Select a target profile before writing model/provider config.
 - Add, edit, and delete custom model providers.
 - Manage multiple models per provider.
 - Write model/provider config to the selected profile only.
@@ -19,23 +27,116 @@ The app treats each Codex home directory as an account boundary. It can discover
 - Copy a `CODEX_HOME='/path/to/profile' codex` launch command for any profile.
 - Keep the app menu-bar only, without a Dock icon.
 
-## Notes
+## Quick Start
 
-Codex may need to be restarted after changing provider or model settings.
+### Build And Run
 
-Each profile keeps its own `auth.json`, `config.toml`, sessions, memories, and local state. The app does not copy profile auth JSON by default.
+Open the Xcode project:
 
-API keys and OpenAI credentials are sensitive. Treat files under `~/.codex*` like secrets.
+```sh
+open CodexModelSwitcher.xcodeproj
+```
 
-Provider settings are available from the gear button. If a provider key is not saved in the app, generated config uses the provider's `env_key` so Codex can still use an environment variable supplied outside the app.
+Build and run the `CodexModelSwitcher` scheme. The Debug target uses Xcode's local `Sign to Run Locally` identity, so a paid Apple Developer Program team is not required for local development.
 
-## Development
+Command-line build:
 
-The Debug target is configured to use Xcode's local `Sign to Run Locally` identity so contributors can build without a paid Apple Developer Program team. Release or distribution builds should be signed with the maintainer's own Apple developer settings.
+```sh
+xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build
+```
+
+The built app is menu-bar-only. It will not show a Dock icon.
+
+### Use Profiles Safely
+
+1. Click the Codex Model Switcher menu bar icon.
+2. Select a profile row such as `Primary`, `Secondary`, or `Free 1`.
+3. Treat the selected row as the target profile. Selecting a profile only changes app state.
+4. Choose a model only when you are ready to update that selected profile's `config.toml`.
+5. Restart or launch Codex with that profile for changes to take effect.
+
+Copying a launch command is the safest test path:
+
+```sh
+CODEX_HOME='/Users/you/.codex-free-1' codex
+```
+
+The copied command starts Codex with that profile as `CODEX_HOME`; it does not move credentials between profiles.
+
+## Provider Settings
+
+Use the gear button to edit the selected provider. Provider rows also expose a gear for settings.
+
+For providers such as OpenRouter:
+
+- If no key is saved in the app, generated config uses the provider's `env_key`, for example `OPENROUTER_API_KEY`.
+- If a key is saved in the app, the app can write managed provider config and key material into the selected profile's local config/env surfaces when applying a model selection.
+- The menu shows `No API key` or `API key saved`, but never displays the key value.
+
+Keep provider keys and files under `~/.codex*` private.
+
+## What Gets Written
+
+App data:
+
+```txt
+~/Library/Application Support/CodexModelSwitcher/app-data.json
+```
+
+Selected profile files:
+
+```txt
+~/.codex*/config.toml
+~/.codex*/model-switcher.env
+```
+
+Legacy app data may still be read from:
+
+```txt
+~/.codex/model-switcher.json
+```
+
+The app does not copy profile `auth.json` files by default.
 
 ## Proxy Status
 
-The compatibility proxy is not part of the default profile-first flow. Treat proxy behavior as advanced/audited functionality only.
+The compatibility proxy is local Swift code in `CodexModelSwitcher/CompatibilityProxyServer.swift`. It binds to:
+
+```txt
+127.0.0.1:48117
+```
+
+It only starts when a non-OpenAI provider has `Local compatibility proxy` enabled. Leave this off for the v1 profile-first workflow.
+
+Proxy hardening, auth gates, request limits, and proxy-first workflows are Day 2 work. Do not rely on proxy behavior as the default trust path yet.
+
+## Development Checks
+
+Run the profile core test runner:
+
+```sh
+swift run ProfileCoreTestRunner
+```
+
+Typecheck app and profile core Swift files:
+
+```sh
+swiftc -typecheck CodexModelSwitcher/*.swift CodexModelSwitcher/ProfileCore/*.swift
+```
+
+Build the macOS app:
+
+```sh
+xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build
+```
+
+## Contributor Notes
+
+- Keep v1 profile-first.
+- Do not make proxy behavior default.
+- Do not print or log API keys, `auth.json`, refresh tokens, or access tokens.
+- Update `CHANGELOG_AI.md` after AI-assisted work.
+- Update `MEMORY.md` only for durable facts, decisions, constraints, or maintainer preferences.
 
 ## License
 
