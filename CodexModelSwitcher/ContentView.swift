@@ -590,7 +590,6 @@ struct ServiceEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
-                fieldRow("Service ID", text: $form.id, prompt: "openrouter")
                 fieldRow("Name", text: $form.name, prompt: "OpenRouter")
                 fieldRow("Base URL", text: $form.baseURL, prompt: "https://api.example.com/v1")
                 fieldRow("Env key", text: $form.envKey, prompt: "EXAMPLE_API_KEY")
@@ -628,11 +627,6 @@ struct ServiceEditorView: View {
             Text("One model ID per line.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        }
-        .onAppear {
-            if form.id.isEmpty, !form.name.isEmpty {
-                form.id = slugify(form.name)
-            }
         }
     }
 

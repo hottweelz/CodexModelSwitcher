@@ -217,7 +217,9 @@ final class AppStore: ObservableObject {
     }
 
     func saveService(originalID: String?, form: ServiceFormData) {
-        let serviceID = form.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let providerName = form.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let existingID = originalID ?? form.id.trimmingCharacters(in: .whitespacesAndNewlines)
+        let serviceID = existingID.isEmpty ? uniqueServiceID(for: providerName) : existingID
         let models = parseModelRows(form.modelsText)
 
         guard isValidServiceID(serviceID) else {
@@ -235,7 +237,7 @@ final class AppStore: ObservableObject {
 
         let service = CodexService(
             id: serviceID,
-            name: form.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? serviceID : form.name,
+            name: providerName.isEmpty ? serviceID : providerName,
             baseURL: form.baseURL.trimmingCharacters(in: .whitespacesAndNewlines),
             envKey: form.envKey.trimmingCharacters(in: .whitespacesAndNewlines),
             apiKey: form.apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -276,6 +278,19 @@ final class AppStore: ObservableObject {
         if let selected = data.selectedModel {
             select(serviceID: selected.serviceID, modelID: selected.modelID)
         }
+    }
+
+    private func uniqueServiceID(for name: String) -> String {
+        let baseID = slugify(name)
+        var candidate = baseID
+        var suffix = 2
+
+        while data.services.contains(where: { $0.id == candidate }) {
+            candidate = "\(baseID)-\(suffix)"
+            suffix += 1
+        }
+
+        return candidate
     }
 
     private func persist() {
