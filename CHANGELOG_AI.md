@@ -38,6 +38,58 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 19:11 EDT - Enable free local Debug signing
+
+Task summary: Switched Debug signing to Xcode's local `Sign to Run Locally` path so contributors can build without the original maintainer's Apple developer team certificate.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Verified a free local Apple Development signing identity is present on this Mac.
+- Confirmed the project was still pinned to the upstream Apple developer team for normal Debug builds.
+- Changed the Debug target to manual ad-hoc local signing with `CODE_SIGN_IDENTITY = "-"` and an empty `DEVELOPMENT_TEAM`.
+- Documented the contributor-friendly Debug signing posture in `README.md`.
+- Recorded the signing decision in `MEMORY.md`.
+
+Files touched:
+
+- `CodexModelSwitcher.xcodeproj/project.pbxproj`
+- `README.md`
+- `MEMORY.md`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `security find-identity -p codesigning -v`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug -showBuildSettings | rg "DEVELOPMENT_TEAM|CODE_SIGN_STYLE|CODE_SIGN_IDENTITY|PRODUCT_BUNDLE_IDENTIFIER"`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build`
+- `swift run ProfileCoreTestRunner`
+- `codesign -dvvv --entitlements :- /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app`
+- `spctl -a -vv /Users/jamestylee/Library/Developer/Xcode/DerivedData/CodexModelSwitcher-eqrgpewjpuikooezqcturopizngh/Build/Products/Debug/CodexModelSwitcher.app`
+
+Results: Debug build settings now show `CODE_SIGN_IDENTITY = -`, `CODE_SIGN_STYLE = Manual`, and `_DEVELOPMENT_TEAM_IS_EMPTY = YES`. `swift run ProfileCoreTestRunner` passed. Normal `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build` passed without signing overrides.
+
+Decisions made:
+
+- Use local ad-hoc signing for Debug builds instead of committing a personal Apple developer team ID.
+- Keep distribution/release signing as an explicit maintainer setup concern.
+
+Known issues:
+
+- Debug builds are ad-hoc signed and therefore not suitable for Gatekeeper distribution.
+- Xcode reports that hardened runtime is disabled for the ad-hoc Debug signature.
+- Manual menu bar UI launch/inspection has not been performed yet.
+
+Next recommended steps:
+
+- Launch the Debug app from Xcode and validate the menu bar profile UI against the existing Codex profile directories.
+- Configure Release signing separately only when preparing a distributable build.
+
+Notes for the next agent: Do not reintroduce the upstream team ID or a personal Apple team ID into Debug signing; use `Sign to Run Locally` for contributor builds.
+
+MEMORY.md update: added Debug local signing decision.
+
 ## 2026-06-21 18:58 EDT - Verify Xcode macOS build
 
 Task summary: Verified the newly installed Xcode toolchain and reran the macOS build checks for the profile-first Codex switcher.

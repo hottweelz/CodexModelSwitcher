@@ -26,6 +26,10 @@ Each profile keeps its own `auth.json`, `config.toml`, sessions, memories, and l
 
 API keys and OpenAI credentials are sensitive. Treat files under `~/.codex*` like secrets.
 
+## Development
+
+The Debug target is configured to use Xcode's local `Sign to Run Locally` identity so contributors can build without a paid Apple Developer Program team. Release or distribution builds should be signed with the maintainer's own Apple developer settings.
+
 ## Proxy Status
 
 The compatibility proxy is not part of the default profile-first flow. Treat proxy behavior as advanced/audited functionality only.

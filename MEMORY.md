@@ -10,6 +10,7 @@
 ## Architectural Decisions
 
 - Future multi-account work should prefer switching or launching with explicit `CODEX_HOME` profile directories instead of copying all account credentials into one shared `~/.codex` profile.
+- Debug builds should use Xcode's local `Sign to Run Locally` identity so contributors can build without the original maintainer's Apple developer team certificate.
 
 ## Security Constraints
 
