@@ -216,13 +216,15 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            Button("Open config.toml") {
+            proxyStatusView
+
+            Spacer()
+
+            Button("config.toml") {
                 NSWorkspace.shared.open(AppPaths.codexConfig)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-
-            Spacer()
 
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
@@ -230,7 +232,61 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
         }
-        .font(.body)
+        .font(.caption)
+    }
+
+    private var proxyStatusView: some View {
+        HStack(spacing: 4) {
+            switch store.proxyStatus {
+            case .starting:
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.55)
+                    .frame(width: 10, height: 10)
+            case .notRunning:
+                Circle()
+                    .fill(.secondary.opacity(0.5))
+                    .frame(width: 10, height: 10)
+            case .active:
+                Circle()
+                    .fill(.green)
+                    .frame(width: 10, height: 10)
+            case .error:
+                Circle()
+                    .fill(.red)
+                    .frame(width: 10, height: 10)
+            }
+
+            Text("Proxy server \(CompatibilityProxyServer.address)")
+                .foregroundStyle(.secondary)
+        }
+        .help(proxyStatusHelp)
+    }
+
+    private var proxyStatusText: String {
+        switch store.proxyStatus {
+        case .starting:
+            return "Starting"
+        case .notRunning:
+            return "Not running"
+        case .active:
+            return "Active"
+        case .error:
+            return "Error"
+        }
+    }
+
+    private var proxyStatusHelp: String {
+        switch store.proxyStatus {
+        case .starting:
+            return "Proxy server is starting"
+        case .notRunning:
+            return "Proxy server is not running"
+        case .active:
+            return "Proxy server is active"
+        case .error:
+            return "Proxy server failed to start"
+        }
     }
 
     private var currentSelectionText: String {
@@ -539,11 +595,18 @@ struct ServiceEditorView: View {
                 fieldRow("Base URL", text: $form.baseURL, prompt: "https://api.example.com/v1")
                 fieldRow("Env key", text: $form.envKey, prompt: "EXAMPLE_API_KEY")
 
+                GridRow {
+                    Text("Proxy")
+                        .foregroundStyle(.secondary)
+                    Toggle("Use compatibility proxy", isOn: $form.useCompatibilityProxy)
+                        .toggleStyle(.checkbox)
+                }
+
                 GridRow(alignment: .top) {
                     Text("API key")
                         .foregroundStyle(.secondary)
                         .padding(.top, 5)
-                    SecureField("Required only when env key is set", text: $form.apiKey)
+                    SecureField("Provider API key", text: $form.apiKey)
                 }
 
                 GridRow(alignment: .top) {

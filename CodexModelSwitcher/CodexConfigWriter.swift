@@ -87,16 +87,25 @@ struct CodexConfigWriter {
             "# Codex Model Switcher managed provider",
             "[model_providers.\(service.id)]",
             #"name = "\#(tomlEscape(service.name))""#,
-            #"base_url = "\#(tomlEscape(service.baseURL))""#
+            #"base_url = "\#(tomlEscape(baseURL(for: service)))""#
         ]
 
-        if service.requiresAPIKey, !service.apiKey.isEmpty {
+        if service.useCompatibilityProxy {
+            return lines.joined(separator: "\n")
+        } else if service.requiresAPIKey, !service.apiKey.isEmpty {
             lines.append(#"experimental_bearer_token = "\#(tomlEscape(service.apiKey))""#)
         } else if service.requiresAPIKey {
             lines.append(#"env_key = "\#(tomlEscape(service.envKey))""#)
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private func baseURL(for service: CodexService) -> String {
+        guard service.useCompatibilityProxy else {
+            return service.baseURL
+        }
+        return "http://\(CompatibilityProxyServer.address)/\(service.id)/v1"
     }
 
     private func removeTopLevelKey(_ key: String, from lines: [String]) -> [String] {

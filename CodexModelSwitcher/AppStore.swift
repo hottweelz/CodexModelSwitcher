@@ -8,9 +8,11 @@ final class AppStore: ObservableObject {
     @Published var statusMessage = ""
     @Published var isOpenAIAccountLoginRunning = false
     @Published var checkingOpenAIAccountIDs: Set<String> = []
+    @Published var proxyStatus: ProxyServerStatus = .notRunning
 
     private let configWriter = CodexConfigWriter()
     private let openAIAuthManager = OpenAIAuthManager()
+    private let compatibilityProxy = CompatibilityProxyServer()
 
     var selectedService: CodexService? {
         guard let selected = data.selectedModel else { return nil }
@@ -23,7 +25,13 @@ final class AppStore: ObservableObject {
     }
 
     init() {
+        compatibilityProxy.onStatusChange = { [weak self] status in
+            Task { @MainActor in
+                self?.proxyStatus = status
+            }
+        }
         load()
+        syncCompatibilityProxy()
     }
 
     func clearError() {
@@ -81,7 +89,10 @@ final class AppStore: ObservableObject {
             try configWriter.applySelection(selected, in: data)
             persist()
             errorMessage = ""
-            statusMessage = "Restart Codex to use this selection."
+            let selectedService = data.services.first { $0.id == serviceID }
+            statusMessage = selectedService?.useCompatibilityProxy == true
+                ? "Restart Codex and keep this app running for the proxy."
+                : "Restart Codex to use this selection."
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -228,6 +239,7 @@ final class AppStore: ObservableObject {
             baseURL: form.baseURL.trimmingCharacters(in: .whitespacesAndNewlines),
             envKey: form.envKey.trimmingCharacters(in: .whitespacesAndNewlines),
             apiKey: form.apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
+            useCompatibilityProxy: form.useCompatibilityProxy,
             models: models
         )
 
@@ -274,9 +286,14 @@ final class AppStore: ObservableObject {
             )
             let encoded = try JSONEncoder().encode(data)
             try encoded.write(to: AppPaths.appData, options: .atomic)
+            syncCompatibilityProxy()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func syncCompatibilityProxy() {
+        compatibilityProxy.updateService(selectedService)
     }
 
     private func defaultData() -> AppData {
@@ -288,6 +305,7 @@ final class AppStore: ObservableObject {
                     baseURL: "",
                     envKey: "",
                     apiKey: "",
+                    useCompatibilityProxy: false,
                     models: [
                         CodexModel(id: "gpt-5.5", name: "gpt-5.5"),
                         CodexModel(id: "gpt-5.4-mini", name: "gpt-5.4-mini")
@@ -299,6 +317,7 @@ final class AppStore: ObservableObject {
                     baseURL: "https://openrouter.ai/api/v1",
                     envKey: "OPENROUTER_API_KEY",
                     apiKey: "",
+                    useCompatibilityProxy: false,
                     models: [
                         CodexModel(id: "moonshotai/kimi-k2.5", name: "moonshotai/kimi-k2.5"),
                         CodexModel(id: "google/gemini-3.5-flash", name: "google/gemini-3.5-flash")

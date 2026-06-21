@@ -6,10 +6,50 @@ struct CodexService: Identifiable, Codable, Equatable {
     var baseURL: String
     var envKey: String
     var apiKey: String
+    var useCompatibilityProxy: Bool
     var models: [CodexModel]
 
     var requiresAPIKey: Bool {
         !envKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    init(
+        id: String,
+        name: String,
+        baseURL: String,
+        envKey: String,
+        apiKey: String,
+        useCompatibilityProxy: Bool = false,
+        models: [CodexModel]
+    ) {
+        self.id = id
+        self.name = name
+        self.baseURL = baseURL
+        self.envKey = envKey
+        self.apiKey = apiKey
+        self.useCompatibilityProxy = useCompatibilityProxy
+        self.models = models
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case baseURL
+        case envKey
+        case apiKey
+        case useCompatibilityProxy
+        case models
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        baseURL = try container.decode(String.self, forKey: .baseURL)
+        envKey = try container.decode(String.self, forKey: .envKey)
+        apiKey = try container.decode(String.self, forKey: .apiKey)
+        useCompatibilityProxy = try container.decodeIfPresent(Bool.self, forKey: .useCompatibilityProxy) ?? false
+        models = try container.decode([CodexModel].self, forKey: .models)
     }
 }
 
@@ -126,12 +166,20 @@ enum OpenAIAccountCredentialStatus: String, Codable {
     case invalid
 }
 
+enum ProxyServerStatus: Equatable {
+    case starting
+    case notRunning
+    case active
+    case error
+}
+
 struct ServiceFormData: Equatable {
     var id: String
     var name: String
     var baseURL: String
     var envKey: String
     var apiKey: String
+    var useCompatibilityProxy: Bool
     var modelsText: String
 
     init(service: CodexService? = nil) {
@@ -140,6 +188,7 @@ struct ServiceFormData: Equatable {
         baseURL = service?.baseURL ?? ""
         envKey = service?.envKey ?? ""
         apiKey = service?.apiKey ?? ""
+        useCompatibilityProxy = service?.useCompatibilityProxy ?? false
         modelsText = service?.models.map(\.id).joined(separator: "\n") ?? ""
     }
 }
