@@ -38,6 +38,54 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 18:58 EDT - Verify Xcode macOS build
+
+Task summary: Verified the newly installed Xcode toolchain and reran the macOS build checks for the profile-first Codex switcher.
+
+Selected agent team: product-manager, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Confirmed Xcode is now selected as the active developer directory.
+- Verified the Xcode project exposes the expected `CodexModelSwitcher` scheme.
+- Reran the profile core executable test runner.
+- Reran the Xcode Debug app build with and without code signing.
+- No app source behavior changed.
+
+Files touched:
+
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `xcode-select -p`
+- `xcodebuild -version`
+- `xcodebuild -list -project CodexModelSwitcher.xcodeproj`
+- `swift run ProfileCoreTestRunner`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug build`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug CODE_SIGNING_ALLOWED=NO build`
+
+Results: Xcode is selected at `/Applications/Xcode.app/Contents/Developer`, `xcodebuild` reports Xcode 26.5 build 17F42, `swift run ProfileCoreTestRunner` passed, and the signing-disabled Xcode Debug build succeeded. The normal signed Debug build failed only at signing because no `Mac Development` certificate matching team ID `67329XW74P` with a private key is installed locally.
+
+Decisions made:
+
+- Treat the remaining Xcode blocker as local signing setup, not a source compile issue.
+- Do not change source or project signing settings during this verification pass.
+
+Known issues:
+
+- A normal signed build still requires a valid local Mac Development certificate/private key for team `67329XW74P` or a project signing-team update.
+- Manual menu bar UI launch/inspection has not been performed yet.
+
+Next recommended steps:
+
+- Open the project in Xcode and configure signing for the maintainer's Apple developer team, or keep using `CODE_SIGNING_ALLOWED=NO` for local compile-only verification.
+- Launch the built menu bar app and validate the profile-first UI against the existing Codex profile directories.
+
+Notes for the next agent: The macOS app compiles with signing disabled; do not treat the missing `67329XW74P` signing identity as a code regression.
+
+MEMORY.md update: not needed
+
 ## 2026-06-21 18:19 EDT - Implement profile-first Codex switcher
 
 Task summary: Implemented profile-first Codex home management with `CODEX_HOME` launch support and profile-scoped config writing.
