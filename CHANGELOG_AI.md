@@ -38,6 +38,65 @@ Notes for the next agent: Read the latest entry before making changes.
 
 MEMORY.md update: not needed
 
+## 2026-06-21 23:45 EDT - Add local no-Xcode install package
+
+Task summary: Added a private local package flow so CodexModelSwitcher can be built on one Mac and installed on other Macs without Xcode.
+
+Selected agent team: product-manager, macos-packaging-engineer, security-reviewer
+
+Changes made:
+
+- Added `script/package_local.sh` to build a Release app with local `Sign to Run Locally`, assemble a package folder, create a zip, and write a SHA-256 checksum.
+- Added `script/install_local_package.sh` to install the already-built app into `/Applications`, clear quarantine metadata where possible, stop any running copy, and launch the menu bar app.
+- Documented the no-Xcode target-Mac install path in `README.md`.
+- Ignored generated package artifacts under `dist/`.
+- Recorded the private local package decision in `MEMORY.md`.
+
+Files touched:
+
+- `.gitignore`
+- `README.md`
+- `MEMORY.md`
+- `script/package_local.sh`
+- `script/install_local_package.sh`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `bash -n script/package_local.sh && bash -n script/install_local_package.sh`
+- `./script/package_local.sh`
+- `ls -lh dist`
+- `unzip -l dist/CodexModelSwitcher-local-macos.zip | sed -n '1,120p'`
+- `shasum -a 256 dist/CodexModelSwitcher-local-macos.zip && cat dist/CodexModelSwitcher-local-macos.zip.sha256`
+- `codesign -dvvv --entitlements :- dist/CodexModelSwitcher-local/CodexModelSwitcher.app 2>&1 | sed -n '1,160p'`
+- `lipo -info dist/CodexModelSwitcher-local/CodexModelSwitcher.app/Contents/MacOS/CodexModelSwitcher`
+- `spctl -a -vv dist/CodexModelSwitcher-local/CodexModelSwitcher.app 2>&1 || true`
+- `codesign --verify --deep --strict --verbose=2 dist/CodexModelSwitcher-local/CodexModelSwitcher.app`
+- `/usr/libexec/PlistBuddy -c 'Print :LSUIElement' dist/CodexModelSwitcher-local/CodexModelSwitcher.app/Contents/Info.plist`
+- `swift run ProfileCoreTestRunner`
+- `git diff --check`
+
+Results: Package generation succeeded at `dist/CodexModelSwitcher-local-macos.zip` with a matching `.sha256` file. The built app verifies on disk, is menu-bar-only, and is a universal `x86_64 arm64` bundle. `spctl` reports `rejected`, which is expected for this private ad-hoc/local package because it is not Developer ID signed or notarized. `ProfileCoreTestRunner` passed.
+
+Decisions made:
+
+- Target Macs should install from the zip and do not need Xcode, the source checkout, or any app secrets.
+- Treat this as a private local package for the maintainer's Macs, not a public distribution artifact.
+
+Known issues:
+
+- Public distribution still needs Developer ID signing, notarization, and distribution-ready entitlements.
+- The current app target requires macOS 15.3 or newer.
+
+Next recommended steps:
+
+- Copy `dist/CodexModelSwitcher-local-macos.zip` to a fresh Mac, unzip it, and run `./install.sh`.
+- If public sharing becomes a goal, add a separate Developer ID archive/notarization path instead of changing the private local package flow.
+
+Notes for the next agent: Do not treat the `spctl` rejection as a package failure for this private install path; it is the expected state for ad-hoc/local signing.
+
+MEMORY.md update: added private local package decision.
+
 ## 2026-06-21 19:34 EDT - Expand README instructions
 
 Task summary: Updated the README with current profile-first usage, provider settings, build/run instructions, secret-handling notes, and proxy Day 2 guidance.

@@ -47,6 +47,37 @@ xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -con
 
 The built app is menu-bar-only. It will not show a Dock icon.
 
+### Install On Macs Without Xcode
+
+Build a local package on a Mac that has Xcode installed:
+
+```sh
+./script/package_local.sh
+```
+
+This creates:
+
+```txt
+dist/CodexModelSwitcher-local-macos.zip
+dist/CodexModelSwitcher-local-macos.zip.sha256
+```
+
+Copy the zip to another Mac. That Mac does not need Xcode or the source checkout.
+
+On the other Mac:
+
+```sh
+unzip CodexModelSwitcher-local-macos.zip
+cd CodexModelSwitcher-local
+./install.sh
+```
+
+The installer copies `CodexModelSwitcher.app` into `/Applications`, clears quarantine metadata when possible, stops any running copy, and launches the menu bar app.
+
+This package is meant for private installs on your own Macs. It is locally/ad-hoc signed, not notarized for public distribution. If macOS blocks a transferred copy, run the included `install.sh` first; public distribution can be handled later with Developer ID signing and notarization.
+
+The current project targets macOS 15.3 or newer.
+
 ### Use Profiles Safely
 
 1. Click the Codex Model Switcher menu bar icon.
