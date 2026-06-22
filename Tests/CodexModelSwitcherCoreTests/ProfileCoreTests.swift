@@ -10,6 +10,7 @@ struct ProfileCoreTestRunner {
         try configSummaryParsesTopLevelModelAndProviderOnly()
         try profileConfigEditorWritesSelectedModelAndProviderAtTopLevel()
         try launcherBuildsCommandAndEnvironmentForProfile()
+        try shellIntegrationWritesActiveProfileAndDynamicCodexHook()
         try profileStorageJSONContainsProfileLabelsButNoAuthJSON()
         try profileDisplayTextNamesSelectedConfigWriteTarget()
         print("ProfileCoreTestRunner: all tests passed")
@@ -126,6 +127,45 @@ struct ProfileCoreTestRunner {
         try expectEqual(launch.shellCommand(), "CODEX_HOME='/Users/example/.codex-secondary' codex")
         try expectEqual(launch.environment(base: ["PATH": "/usr/bin"])["CODEX_HOME"], "/Users/example/.codex-secondary")
         try expectEqual(launch.workingDirectory.path, "/Users/example")
+    }
+
+    static func shellIntegrationWritesActiveProfileAndDynamicCodexHook() throws {
+        let root = try makeTemporaryDirectory()
+        let home = root.appendingPathComponent("home", isDirectory: true)
+        let support = root
+            .appendingPathComponent("Library", isDirectory: true)
+            .appendingPathComponent("Application Support", isDirectory: true)
+            .appendingPathComponent("CodexModelSwitcher", isDirectory: true)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+
+        let profile = CodexProfile(
+            id: "secondary",
+            name: "Secondary",
+            path: home.appendingPathComponent(".codex-secondary", isDirectory: true).path,
+            isPinned: true
+        )
+        let integration = CodexShellIntegration(
+            supportDirectory: support,
+            homeDirectory: home
+        )
+
+        try integration.writeActiveProfile(profile)
+        let touchedShellFiles = try integration.installShellHook()
+
+        let activeProfile = try String(contentsOf: integration.activeProfileEnv, encoding: .utf8)
+        try expectTrue(activeProfile.contains("export CODEX_HOME='\(profile.path)'"), "active profile env should export selected CODEX_HOME")
+        try expectTrue(activeProfile.contains("CODEX_MODEL_SWITCHER_ACTIVE_PROFILE_ID='secondary'"), "active profile env should include non-secret profile id")
+
+        let shellHook = try String(contentsOf: integration.shellHook, encoding: .utf8)
+        try expectTrue(shellHook.contains("codex()"), "shell hook should define a codex function")
+        try expectTrue(shellHook.contains("active-profile.env"), "shell hook should read active profile at command launch time")
+        try expectTrue(shellHook.contains("command codex \"$@\""), "shell hook should delegate to the real codex executable")
+
+        try expectEqual(touchedShellFiles.map(\.lastPathComponent).sorted(), [".bashrc", ".zshrc"])
+        for shellFile in touchedShellFiles {
+            let contents = try String(contentsOf: shellFile, encoding: .utf8)
+            try expectTrue(contents.contains("Codex Model Switcher shell hook"), "\(shellFile.lastPathComponent) should source the generated hook")
+        }
     }
 
     static func profileStorageJSONContainsProfileLabelsButNoAuthJSON() throws {

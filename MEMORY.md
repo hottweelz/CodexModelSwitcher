@@ -12,6 +12,7 @@
 - Future multi-account work should prefer switching or launching with explicit `CODEX_HOME` profile directories instead of copying all account credentials into one shared `~/.codex` profile.
 - Debug builds should use Xcode's local `Sign to Run Locally` identity so contributors can build without the original maintainer's Apple developer team certificate.
 - Private installs on the maintainer's Macs should use the local package scripts; target Macs do not need Xcode, but artifacts are locally/ad-hoc signed and not notarized.
+- Bare terminal `codex` launches follow profile switches only after the app's explicit one-time shell hook is installed; the hook reads a non-secret active profile env file on each `codex` invocation.
 - The default menu-bar surface should be profile-first and should not show proxy status unless a proxy-backed provider is selected or the proxy is active/erroring.
 - Provider settings should be discoverable from the main menu bar surface, while API key status should be visible without exposing key values.
 - Proxy hardening and proxy-first workflows are Day 2 work; v1 should stay focused on profile-first switching and direct provider config.

@@ -275,6 +275,15 @@ struct ContentView: View {
 
             Spacer()
 
+            Button {
+                store.installShellIntegration()
+            } label: {
+                Image(systemName: store.isShellHookInstalled ? "terminal.fill" : "terminal")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(store.isShellHookInstalled ? Color.secondary : Color.accentColor)
+            .help(shellIntegrationHelp)
+
             Button("config.toml") {
                 store.openSelectedProfileConfig()
             }
@@ -389,6 +398,12 @@ struct ContentView: View {
             return "No Codex profile selected"
         }
         return "Selected Codex profile: \(profile.path)"
+    }
+
+    private var shellIntegrationHelp: String {
+        store.isShellHookInstalled
+            ? "Terminal hook installed; plain codex follows selected profile"
+            : "Install terminal hook so plain codex follows selected profile"
     }
 
     private func shortPath(_ path: String) -> String {

@@ -14,6 +14,7 @@ final class AppStore: ObservableObject {
     private let configWriter = CodexConfigWriter()
     private let openAIAuthManager = OpenAIAuthManager()
     private let compatibilityProxy = CompatibilityProxyServer()
+    private let shellIntegration = CodexShellIntegration()
 
     var selectedService: CodexService? {
         guard let selected = data.selectedModel else { return nil }
@@ -30,6 +31,10 @@ final class AppStore: ObservableObject {
             return data.profiles.first
         }
         return data.profiles.first { $0.id == selectedProfileID } ?? data.profiles.first
+    }
+
+    var isShellHookInstalled: Bool {
+        shellIntegration.isShellHookInstalled()
     }
 
     init() {
@@ -78,6 +83,7 @@ final class AppStore: ObservableObject {
         }
 
         migrateOpenAIAccountEmails()
+        syncActiveProfile(showStatus: false)
     }
 
     private func migrateOpenAIAccountEmails() {
@@ -174,8 +180,7 @@ final class AppStore: ObservableObject {
     func selectProfile(_ profileID: String) {
         data.selectedProfileID = profileID
         persist()
-        statusMessage = "Selected Codex profile."
-        errorMessage = ""
+        syncActiveProfile(showStatus: true)
     }
 
     func launchCommand(for profile: CodexProfile) -> String {
@@ -187,6 +192,24 @@ final class AppStore: ObservableObject {
         NSPasteboard.general.setString(launchCommand(for: profile), forType: .string)
         statusMessage = "Copied launch command for \(profile.name)."
         errorMessage = ""
+    }
+
+    func installShellIntegration() {
+        guard let profile = selectedProfile else {
+            errorMessage = "Choose a Codex profile first."
+            return
+        }
+
+        do {
+            try activateProfile(profile)
+            _ = try shellIntegration.installShellHook()
+            statusMessage = "Installed terminal hook. Open a new terminal or source ~/.zshrc once."
+            errorMessage = ""
+            objectWillChange.send()
+        } catch {
+            statusMessage = ""
+            errorMessage = error.localizedDescription
+        }
     }
 
     func openProfileFolder(_ profile: CodexProfile) {
@@ -371,6 +394,28 @@ final class AppStore: ObservableObject {
         compatibilityProxy.updateService(selectedService)
     }
 
+    private func syncActiveProfile(showStatus: Bool) {
+        guard let profile = selectedProfile else { return }
+
+        do {
+            try activateProfile(profile)
+            if showStatus {
+                statusMessage = shellIntegration.isShellHookInstalled()
+                    ? "Activated \(profile.name). Run codex again."
+                    : "Activated \(profile.name). Install terminal hook once for plain codex."
+            }
+            errorMessage = ""
+        } catch {
+            statusMessage = ""
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func activateProfile(_ profile: CodexProfile) throws {
+        try shellIntegration.writeActiveProfile(profile)
+        setLaunchEnvironment(name: "CODEX_HOME", value: profile.path)
+    }
+
     private func ensureDefaultProfiles() {
         let defaults = CodexProfile.defaultProfiles()
         var existingByID = Dictionary(uniqueKeysWithValues: data.profiles.map { ($0.id, $0) })
@@ -426,5 +471,12 @@ final class AppStore: ObservableObject {
             openAIAccounts: [],
             selectedOpenAIAccountID: nil
         )
+    }
+
+    private func setLaunchEnvironment(name: String, value: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        process.arguments = ["setenv", name, value]
+        try? process.run()
     }
 }

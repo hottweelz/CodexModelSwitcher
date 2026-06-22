@@ -62,6 +62,9 @@ Notes:
 - This is a private local package, not a notarized public distribution.
 - The app manages local Codex profile config only; it does not include account secrets.
 - macOS may ask for permission to install into /Applications.
+- To make bare terminal launches like `codex` follow profile switches, open the
+  app and click the terminal icon once. Then open a new terminal window, or run
+  `source ~/.zshrc` once.
 README
 
 (

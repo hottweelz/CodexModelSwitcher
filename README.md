@@ -82,9 +82,11 @@ The current project targets macOS 15.3 or newer.
 
 1. Click the Codex Model Switcher menu bar icon.
 2. Select a profile row such as `Primary`, `Secondary`, or `Free 1`.
-3. Treat the selected row as the target profile. Selecting a profile only changes app state.
+3. Treat the selected row as the active target profile. Selecting a profile writes a non-secret active profile file and updates `CODEX_HOME` for future user launch environments.
 4. Choose a model only when you are ready to update that selected profile's `config.toml`.
 5. Restart or launch Codex with that profile for changes to take effect.
+
+For bare terminal launches such as `codex` to follow profile switches, click the terminal icon in the footer once. This installs a small shell hook into `~/.zshrc` and `~/.bashrc` that reads the current active profile each time `codex` starts. Open a new terminal window, or run `source ~/.zshrc` once, then plain `codex` will follow future profile selections.
 
 Copying a launch command is the safest test path:
 
@@ -119,6 +121,15 @@ Selected profile files:
 ```txt
 ~/.codex*/config.toml
 ~/.codex*/model-switcher.env
+```
+
+Active profile launcher files:
+
+```txt
+~/Library/Application Support/CodexModelSwitcher/active-profile.env
+~/Library/Application Support/CodexModelSwitcher/codex-shell-hook.sh
+~/.zshrc
+~/.bashrc
 ```
 
 Legacy app data may still be read from:

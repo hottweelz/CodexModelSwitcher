@@ -97,6 +97,68 @@ Notes for the next agent: Do not treat the `spctl` rejection as a package failur
 
 MEMORY.md update: added private local package decision.
 
+## 2026-06-22 00:16 EDT - Make plain codex follow profile switches
+
+Task summary: Fixed the Mac mini profile-switching gap where selecting a profile in the menu app did not affect plain terminal `codex` launches.
+
+Selected agent team: home-codex-debugger, macos-spatial-metal-engineer, security-reviewer
+
+Changes made:
+
+- Added `CodexShellIntegration` to write a non-secret active profile env file and a dynamic shell hook.
+- Updated profile selection to refresh the active profile env file and set user `CODEX_HOME` through `launchctl` for future user launch environments.
+- Added a footer terminal icon that explicitly installs the one-time shell hook into `~/.zshrc` and `~/.bashrc`.
+- Added a regression test for writing the active profile file and dynamic `codex()` shell hook.
+- Documented the one-time shell hook step in `README.md` and the packaged `README.txt`.
+- Recorded the shell-hook contract in `MEMORY.md`.
+
+Files touched:
+
+- `CodexModelSwitcher/ProfileCore/CodexShellIntegration.swift`
+- `CodexModelSwitcher/AppStore.swift`
+- `CodexModelSwitcher/ContentView.swift`
+- `Tests/CodexModelSwitcherCoreTests/ProfileCoreTests.swift`
+- `README.md`
+- `MEMORY.md`
+- `script/package_local.sh`
+- `CHANGELOG_AI.md`
+
+Commands/tests run:
+
+- `swift run ProfileCoreTestRunner` (red before implementation: `cannot find 'CodexShellIntegration' in scope`)
+- `swift run ProfileCoreTestRunner`
+- `swiftc -typecheck CodexModelSwitcher/*.swift CodexModelSwitcher/ProfileCore/*.swift`
+- `git diff --check`
+- `xcodebuild -project CodexModelSwitcher.xcodeproj -scheme CodexModelSwitcher -configuration Debug CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build`
+- `./script/package_local.sh`
+- `ls -lh dist && unzip -l dist/CodexModelSwitcher-local-macos.zip | sed -n '1,120p'`
+- `strings dist/CodexModelSwitcher-local/CodexModelSwitcher.app/Contents/MacOS/CodexModelSwitcher | rg "Installed terminal hook|plain codex|active-profile.env|codex-shell-hook|CODEX_MODEL_SWITCHER_ACTIVE_PROFILE"`
+- `unzip -p dist/CodexModelSwitcher-local-macos.zip CodexModelSwitcher-local/README.txt`
+- `shasum -a 256 dist/CodexModelSwitcher-local-macos.zip && cat dist/CodexModelSwitcher-local-macos.zip.sha256`
+- `codesign --verify --deep --strict --verbose=2 dist/CodexModelSwitcher-local/CodexModelSwitcher.app`
+- `spctl -a -vv dist/CodexModelSwitcher-local/CodexModelSwitcher.app 2>&1 || true`
+
+Results: The regression test now passes, Swift typecheck passes, Debug Xcode build succeeds, and the regenerated local package contains the terminal-hook strings and updated package README. The packaged app verifies on disk and remains rejected by `spctl`, which is expected for the private ad-hoc package.
+
+Decisions made:
+
+- Plain terminal `codex` launches should follow profile switches through an explicit one-time shell hook rather than silent shell dotfile mutation.
+- The active profile file must not contain secrets; it only exports `CODEX_HOME` and non-secret profile metadata.
+
+Known issues:
+
+- Existing already-open shells must source `~/.zshrc` once or open a new terminal window after installing the hook.
+- The shell hook intentionally defines a `codex()` shell function, so any existing user-defined `codex` alias/function would need manual reconciliation.
+
+Next recommended steps:
+
+- On the Mac mini, install the updated package, click the terminal icon once, open a new terminal or run `source ~/.zshrc`, switch profiles, then run plain `codex`.
+- If desired, add a future UI affordance that shows whether the current shell hook is installed in zsh, bash, or both.
+
+Notes for the next agent: The root cause was that app profile selection persisted only app state/config targets; bare terminal launches had no dynamic `CODEX_HOME` bridge until this shell integration.
+
+MEMORY.md update: added the explicit shell-hook profile switching contract.
+
 ## 2026-06-21 19:34 EDT - Expand README instructions
 
 Task summary: Updated the README with current profile-first usage, provider settings, build/run instructions, secret-handling notes, and proxy Day 2 guidance.
